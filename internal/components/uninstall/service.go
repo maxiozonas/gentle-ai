@@ -14,6 +14,7 @@ import (
 	"github.com/gentleman-programming/gentle-ai/internal/backup"
 	"github.com/gentleman-programming/gentle-ai/internal/components/filemerge"
 	"github.com/gentleman-programming/gentle-ai/internal/components/gga"
+	"github.com/gentleman-programming/gentle-ai/internal/components/rtk"
 	"github.com/gentleman-programming/gentle-ai/internal/components/sdd"
 	"github.com/gentleman-programming/gentle-ai/internal/model"
 	"github.com/gentleman-programming/gentle-ai/internal/state"
@@ -89,6 +90,7 @@ var (
 		model.ComponentSkills,
 		model.ComponentTheme,
 		model.ComponentGGA,
+		model.ComponentRTK,
 	}
 	fullAgentRemovalComponents = []model.ComponentID{
 		model.ComponentPersona,
@@ -618,6 +620,32 @@ func (s *Service) componentOperations(adapter agents.Adapter, componentID model.
 			ops = append(ops, removeFile(path))
 		}
 		ops = append(ops, removeDirIfEmpty(filepath.Dir(gga.ConfigPath(homeDir))))
+	case model.ComponentRTK:
+		// RTK hooks are managed by the rtk binary itself (via `rtk init --uninstall`).
+		// Unlike file-based components, we cannot declaratively remove hooks —
+		// they are injected into agent config directories by the rtk CLI.
+		// Add a manual action so the user runs the cleanup themselves.
+		agentList := supportedAgentIDs(s.registry)
+		if len(agentList) > 0 {
+			agentNames := make([]string, 0, len(agentList))
+			for _, id := range agentList {
+				agentNames = append(agentNames, string(id))
+			}
+			ops = append(ops, operation{
+				typeID: opRewriteFile, // reuse type for "side-effect that reports changes"
+				path:   "rtk-uninstall-hooks",
+				apply: func(_ string) (bool, bool, error) {
+					_, errs := rtk.InjectForUninstall(agentList)
+					if len(errs) > 0 {
+						// Best-effort: report errors but don't fail the uninstall.
+						for _, err := range errs {
+							fmt.Fprintf(os.Stderr, "WARNING: rtk uninstall: %v\n", err)
+						}
+					}
+					return len(errs) == 0, false, nil
+				},
+			})
+		}
 	default:
 		return nil, nil, fmt.Errorf("unsupported component ID %q", componentID)
 	}
@@ -981,6 +1009,14 @@ func globalBackupTargets(homeDir string) []string {
 		gga.ConfigPath(homeDir),
 		gga.AgentsTemplatePath(homeDir),
 	}
+}
+
+// supportedAgentIDs returns the list of all agent IDs from the registry.
+func supportedAgentIDs(registry *agents.Registry) []model.AgentID {
+	if registry == nil {
+		return nil
+	}
+	return registry.SupportedAgents()
 }
 
 func stateAgentsToRemove(agentIDs []model.AgentID, componentIDs []model.ComponentID) []model.AgentID {

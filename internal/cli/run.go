@@ -20,6 +20,7 @@ import (
 	"github.com/gentleman-programming/gentle-ai/internal/components/mcp"
 	"github.com/gentleman-programming/gentle-ai/internal/components/permissions"
 	"github.com/gentleman-programming/gentle-ai/internal/components/persona"
+	"github.com/gentleman-programming/gentle-ai/internal/components/rtk"
 	"github.com/gentleman-programming/gentle-ai/internal/components/sdd"
 	"github.com/gentleman-programming/gentle-ai/internal/components/skills"
 	"github.com/gentleman-programming/gentle-ai/internal/components/theme"
@@ -636,6 +637,20 @@ func (s componentApplyStep) Run() error {
 		}
 		if _, err := gga.Inject(s.homeDir, s.agents); err != nil {
 			return fmt.Errorf("inject gga config: %w", err)
+		}
+		return nil
+	case model.ComponentRTK:
+		if !rtk.Available(s.profile) {
+			commands, err := rtk.InstallCommand(s.profile)
+			if err != nil {
+				return fmt.Errorf("resolve install command for component %q: %w", s.component, err)
+			}
+			if err := runCommandSequence(commands); err != nil {
+				return err
+			}
+		}
+		if _, err := rtk.Inject(s.agents); err != nil {
+			return fmt.Errorf("inject rtk for agents: %w", err)
 		}
 		return nil
 	case model.ComponentTheme:

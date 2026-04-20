@@ -157,6 +157,7 @@ func componentsForPreset(preset model.PresetID) []model.ComponentID {
 			model.ComponentPersona,
 			model.ComponentPermission,
 			model.ComponentGGA,
+			model.ComponentRTK,
 		}
 	}
 }

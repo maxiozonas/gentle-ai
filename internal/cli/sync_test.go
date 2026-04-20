@@ -192,12 +192,13 @@ func TestBuildSyncSelectionDefaultScopeIncludesManagedComponents(t *testing.T) {
 
 	sel := BuildSyncSelection(flags, agents)
 
-	// Default sync must include: SDD, Engram, Context7, GGA, Skills
+	// Default sync must include: SDD, Engram, Context7, GGA, RTK, Skills
 	mandatoryComponents := []model.ComponentID{
 		model.ComponentSDD,
 		model.ComponentEngram,
 		model.ComponentContext7,
 		model.ComponentGGA,
+		model.ComponentRTK,
 		model.ComponentSkills,
 	}
 
@@ -1388,7 +1389,7 @@ func TestRunSyncWithSelection_WritesExpectedFiles(t *testing.T) {
 
 	sel := model.Selection{
 		Agents:     []model.AgentID{model.AgentOpenCode},
-		Components: []model.ComponentID{model.ComponentSDD, model.ComponentEngram, model.ComponentContext7, model.ComponentGGA, model.ComponentSkills},
+		Components: []model.ComponentID{model.ComponentSDD, model.ComponentEngram, model.ComponentContext7, model.ComponentGGA, model.ComponentRTK, model.ComponentSkills},
 		SDDMode:    model.SDDModeSingle,
 	}
 
@@ -1424,7 +1425,7 @@ func TestRunSyncWithSelection_FilesChangedOnFreshHome(t *testing.T) {
 
 	sel := model.Selection{
 		Agents:     []model.AgentID{model.AgentOpenCode},
-		Components: []model.ComponentID{model.ComponentSDD, model.ComponentEngram, model.ComponentContext7, model.ComponentGGA, model.ComponentSkills},
+		Components: []model.ComponentID{model.ComponentSDD, model.ComponentEngram, model.ComponentContext7, model.ComponentGGA, model.ComponentRTK, model.ComponentSkills},
 		SDDMode:    model.SDDModeSingle,
 	}
 
@@ -1454,7 +1455,7 @@ func TestRunSyncWithSelection_IsIdempotent(t *testing.T) {
 
 	sel := model.Selection{
 		Agents:     []model.AgentID{model.AgentOpenCode},
-		Components: []model.ComponentID{model.ComponentSDD, model.ComponentEngram, model.ComponentContext7, model.ComponentGGA, model.ComponentSkills},
+		Components: []model.ComponentID{model.ComponentSDD, model.ComponentEngram, model.ComponentContext7, model.ComponentGGA, model.ComponentRTK, model.ComponentSkills},
 		SDDMode:    model.SDDModeSingle,
 	}
 
@@ -1496,7 +1497,7 @@ func TestRunSyncWithSelection_SelectionAgentsForwarded(t *testing.T) {
 
 	sel := model.Selection{
 		Agents:     []model.AgentID{model.AgentOpenCode},
-		Components: []model.ComponentID{model.ComponentSDD, model.ComponentEngram, model.ComponentContext7, model.ComponentGGA, model.ComponentSkills},
+		Components: []model.ComponentID{model.ComponentSDD, model.ComponentEngram, model.ComponentContext7, model.ComponentGGA, model.ComponentRTK, model.ComponentSkills},
 	}
 
 	result, err := RunSyncWithSelection(home, sel)

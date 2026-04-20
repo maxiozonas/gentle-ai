@@ -16,6 +16,7 @@ import (
 	"github.com/gentleman-programming/gentle-ai/internal/components/gga"
 	"github.com/gentleman-programming/gentle-ai/internal/components/mcp"
 	"github.com/gentleman-programming/gentle-ai/internal/components/permissions"
+	"github.com/gentleman-programming/gentle-ai/internal/components/rtk"
 	"github.com/gentleman-programming/gentle-ai/internal/components/sdd"
 	"github.com/gentleman-programming/gentle-ai/internal/components/skills"
 	"github.com/gentleman-programming/gentle-ai/internal/components/theme"
@@ -275,6 +276,7 @@ func BuildSyncSelection(flags SyncFlags, agentIDs []model.AgentID) model.Selecti
 		model.ComponentEngram,
 		model.ComponentContext7,
 		model.ComponentGGA,
+		model.ComponentRTK,
 		model.ComponentSkills,
 	}
 
@@ -564,6 +566,15 @@ func (s componentSyncStep) Run() error {
 		}
 		// Count GGA files changed based on individual Changed flags.
 		s.countChanged(boolToInt(res.ConfigChanged) + boolToInt(res.AgentsChanged))
+		return nil
+
+	case model.ComponentRTK:
+		// Sync: re-run rtk init for all agents (idempotent).
+		// NO binary install.
+		_, err := rtk.Inject(s.agents)
+		if err != nil {
+			return fmt.Errorf("sync rtk for agents: %w", err)
+		}
 		return nil
 
 	case model.ComponentPermission:

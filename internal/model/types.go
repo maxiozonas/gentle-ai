@@ -38,6 +38,7 @@ const (
 	ComponentPersona    ComponentID = "persona"
 	ComponentPermission ComponentID = "permissions"
 	ComponentGGA        ComponentID = "gga"
+	ComponentRTK        ComponentID = "rtk"
 	ComponentTheme      ComponentID = "theme"
 )
 
