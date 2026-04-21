@@ -13,6 +13,11 @@ import (
 type InjectResult struct {
 	// Configured holds the agent IDs that were successfully configured.
 	Configured []model.AgentID
+	// Skipped holds the agent IDs that were requested but not configured because
+	// upstream rtk does not support them yet (e.g. Kimi, Qwen Code, Kiro IDE).
+	// The install pipeline surfaces these in the final report so users know
+	// which selected agents missed out on token savings and why.
+	Skipped []model.AgentID
 }
 
 // runRTKInit is the function used to execute `rtk init` commands.
@@ -32,11 +37,13 @@ func defaultRunRTKInit(args ...string) error {
 // configured agents) along with the error for the failing agent.
 func Inject(agentIDs []model.AgentID) (InjectResult, error) {
 	configs := AgentConfigs()
-	var configured []model.AgentID
+	var configured, skipped []model.AgentID
 
 	for _, id := range agentIDs {
 		if _, ok := configs[id]; !ok {
-			// Agent not supported by RTK — skip silently.
+			// Agent not supported by RTK upstream — record it so the run
+			// pipeline can surface a single "skipped N agents" message.
+			skipped = append(skipped, id)
 			continue
 		}
 
@@ -47,14 +54,14 @@ func Inject(agentIDs []model.AgentID) (InjectResult, error) {
 		}
 
 		if err := runRTKInit(args...); err != nil {
-			return InjectResult{Configured: configured},
+			return InjectResult{Configured: configured, Skipped: skipped},
 				fmt.Errorf("rtk init for %q: %w", id, err)
 		}
 
 		configured = append(configured, id)
 	}
 
-	return InjectResult{Configured: configured}, nil
+	return InjectResult{Configured: configured, Skipped: skipped}, nil
 }
 
 // InjectForUninstall runs `rtk init --uninstall` for each given agent.

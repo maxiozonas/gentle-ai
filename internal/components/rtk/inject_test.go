@@ -104,6 +104,11 @@ func TestInject_SkipsUnsupportedAgents(t *testing.T) {
 		t.Errorf("Inject().Configured = %v, want %v", result.Configured, wantConfigured)
 	}
 
+	wantSkipped := []model.AgentID{model.AgentKimi, model.AgentQwenCode, model.AgentKiroIDE}
+	if !reflect.DeepEqual(result.Skipped, wantSkipped) {
+		t.Errorf("Inject().Skipped = %v, want %v", result.Skipped, wantSkipped)
+	}
+
 	if callCount != 2 {
 		t.Errorf("rtk init called %d times, want 2 (skipped 3 pending agents)", callCount)
 	}

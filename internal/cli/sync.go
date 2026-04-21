@@ -570,10 +570,26 @@ func (s componentSyncStep) Run() error {
 
 	case model.ComponentRTK:
 		// Sync: re-run rtk init for all agents (idempotent).
-		// NO binary install.
-		_, err := rtk.Inject(s.agents)
+		// NO binary install — if the user uninstalled rtk out-of-band,
+		// skip with a warning instead of crashing the whole sync.
+		// Re-install happens via `gentle-ai install`, not sync.
+		if !rtk.IsOnPath() {
+			fmt.Fprintln(os.Stderr, "NOTE: rtk binary not found in PATH — skipping RTK sync. Run `gentle-ai install --component=rtk` to reinstall.")
+			return nil
+		}
+		result, err := rtk.Inject(s.agents)
 		if err != nil {
 			return fmt.Errorf("sync rtk for agents: %w", err)
+		}
+		if len(result.Skipped) > 0 {
+			names := make([]string, 0, len(result.Skipped))
+			for _, id := range result.Skipped {
+				names = append(names, string(id))
+			}
+			fmt.Fprintf(os.Stderr,
+				"NOTE: rtk skipped %d agent(s) not supported upstream: %s.\n",
+				len(result.Skipped), strings.Join(names, ", "),
+			)
 		}
 		return nil
 

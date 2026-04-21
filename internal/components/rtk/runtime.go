@@ -28,6 +28,15 @@ var (
 // semverPattern matches version strings like "rtk 1.2.3", "v1.2.3", or "1.2.3".
 var semverPattern = regexp.MustCompile(`v?(\d+\.\d+\.\d+)`)
 
+// IsOnPath reports whether the rtk binary is resolvable via PATH only.
+// Use this from callers that do not have a PlatformProfile handy (e.g.
+// sync, which re-applies config without re-installing binaries). Returns
+// false even if rtk exists in a well-known install dir that is not on PATH.
+func IsOnPath() bool {
+	_, err := cmdLookPath("rtk")
+	return err == nil
+}
+
 // Available reports whether the rtk binary is reachable on the system.
 // It checks PATH first, then falls back to well-known install locations:
 //   - ~/.local/bin/rtk (Linux default)

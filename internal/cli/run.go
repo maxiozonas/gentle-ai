@@ -60,6 +60,10 @@ var (
 	// Package-level var for testability — tests can replace this to avoid real HTTP calls.
 	engramDownloadFn = engram.DownloadLatestBinary
 
+	// rtkDownloadFn mirrors engramDownloadFn for the rtk binary download path
+	// used on Linux (apt/pacman/dnf) where brew is not available.
+	rtkDownloadFn = rtk.DownloadLatestBinary
+
 	// AppVersion is the gentle-ai version that will be written into backup manifests.
 	// It is set by app.go before any CLI operation so that every backup created during
 	// an install or sync records which version of gentle-ai made it.
@@ -641,16 +645,43 @@ func (s componentApplyStep) Run() error {
 		return nil
 	case model.ComponentRTK:
 		if !rtk.Available(s.profile) {
-			commands, err := rtk.InstallCommand(s.profile)
-			if err != nil {
-				return fmt.Errorf("resolve install command for component %q: %w", s.component, err)
-			}
-			if err := runCommandSequence(commands); err != nil {
-				return err
+			if s.profile.PackageManager == "brew" {
+				commands, err := rtk.InstallCommand(s.profile)
+				if err != nil {
+					return fmt.Errorf("resolve install command for component %q: %w", s.component, err)
+				}
+				if err := runCommandSequence(commands); err != nil {
+					return err
+				}
+			} else {
+				// Linux without Homebrew: download the prebuilt rtk binary from
+				// GitHub Releases. No `curl | sh` — same stance as every other
+				// component that avoids pipe-to-shell installs.
+				binaryPath, err := rtkDownloadFn(s.profile)
+				if err != nil {
+					return fmt.Errorf("download rtk binary: %w", err)
+				}
+				binDir := filepath.Dir(binaryPath)
+				if err := system.AddToUserPath(binDir); err != nil {
+					// Non-fatal: the binary is on disk, the user just needs to
+					// restart their shell or add the dir to PATH manually.
+					fmt.Fprintf(os.Stderr, "WARNING: could not add %s to PATH: %v\n", binDir, err)
+				}
 			}
 		}
-		if _, err := rtk.Inject(s.agents); err != nil {
+		result, err := rtk.Inject(s.agents)
+		if err != nil {
 			return fmt.Errorf("inject rtk for agents: %w", err)
+		}
+		if len(result.Skipped) > 0 {
+			names := make([]string, 0, len(result.Skipped))
+			for _, id := range result.Skipped {
+				names = append(names, string(id))
+			}
+			fmt.Fprintf(os.Stderr,
+				"NOTE: rtk skipped %d agent(s) not supported upstream: %s. Token-saving hooks were not installed for them.\n",
+				len(result.Skipped), strings.Join(names, ", "),
+			)
 		}
 		return nil
 	case model.ComponentTheme:
