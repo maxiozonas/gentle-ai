@@ -236,7 +236,11 @@ func resolveGGAInstall(profile system.PlatformProfile) (CommandSequence, error) 
 
 // resolveRTKInstall returns the correct install command sequence for RTK per platform.
 //   - darwin (brew): brew install rtk
-//   - linux: curl install script (handles download, extraction, and PATH setup)
+//   - linux (apt/pacman/dnf): returns an error — callers must use
+//     rtk.DownloadLatestBinary() to fetch a prebuilt release from GitHub.
+//     We do not pipe curl into sh; that pattern was explicitly rejected for
+//     Kimi for the same security reasons (see resolveKimiInstall above).
+//   - windows: returns an error — rtk hooks require a POSIX shell.
 func resolveRTKInstall(profile system.PlatformProfile) (CommandSequence, error) {
 	switch profile.PackageManager {
 	case "brew":
@@ -244,13 +248,14 @@ func resolveRTKInstall(profile system.PlatformProfile) (CommandSequence, error) 
 			{"brew", "install", "rtk"},
 		}, nil
 	case "apt", "pacman", "dnf":
-		return CommandSequence{
-			{"sh", "-c", "curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh"},
-		}, nil
+		return nil, fmt.Errorf(
+			"rtk on %q/%q uses direct binary download — use rtk.DownloadLatestBinary() instead of CommandSequence",
+			profile.OS, profile.PackageManager,
+		)
 	default:
 		return nil, fmt.Errorf(
-			"unsupported platform for rtk: os=%q distro=%q pm=%q (RTK hooks require Unix)",
-			profile.OS, profile.LinuxDistro, profile.PackageManager,
+			"rtk is not supported on %q/%q — rtk hooks require a POSIX shell (Linux or macOS). On Windows, install gentle-ai inside WSL",
+			profile.OS, profile.PackageManager,
 		)
 	}
 }
